@@ -12,6 +12,5 @@ public class Main {
         Jpeg jpeg = new Jpeg(inputFilePath,0);
         jpeg.encodeToNewJpeg("output");
         jpeg.decodeToBMP("output.newjpeg","output.jpg");
-
     }
 }
