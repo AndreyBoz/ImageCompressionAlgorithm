@@ -9,7 +9,7 @@ import java.io.IOException;
 public class Main {
     public static void main(String[] args) throws IOException {
         String inputFilePath = "input.bmp";
-        Jpeg jpeg = new Jpeg(inputFilePath,0);
+        Jpeg jpeg = new Jpeg(inputFilePath,1);
         jpeg.encodeToNewJpeg("output");
         jpeg.decodeToImg("output.newjpeg","output.jpg");
     }

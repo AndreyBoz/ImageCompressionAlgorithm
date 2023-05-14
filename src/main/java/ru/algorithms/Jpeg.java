@@ -104,9 +104,9 @@ public class Jpeg {
 
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
-                    int YVal = Y[x][y] & 0xFF;
-                    int CbVal = Cb[x / 2][y / 2] & 0xFF; // получаем младшие биты от 0 до 255
-                    int CrVal = Cr[x / 2][y / 2] & 0xFF;
+                    int YVal = colors[0][x][y] & 0xFF;
+                    int CbVal = colors[1][x / 2][y / 2] & 0xFF; // получаем младшие биты от 0 до 255
+                    int CrVal = colors[2][x / 2][y / 2] & 0xFF;
 
                     // Преобразование YCbCr в RGB
                     int R = (int) (YVal + 1.402 * (CrVal - 128));
@@ -138,6 +138,13 @@ public class Jpeg {
         }
 
         return block;
+    }
+    private void setBlock(int[][] block, byte[][] colors, int x, int y, int blockSize) {
+        for (int i = 0; i < blockSize; i++) {
+            for (int j = 0; j < blockSize; j++) {
+                colors[x + i][y + j] = (byte) block[i][j];
+            }
+        }
     }
     private void getYCbCr(BufferedImage input) {
         Y = new byte[width][height];
@@ -383,11 +390,5 @@ public class Jpeg {
         return result;
     }
 
-    private void setBlock(int[][] block, byte[][] colors, int x, int y, int blockSize) {
-        for (int i = 0; i < blockSize; i++) {
-            for (int j = 0; j < blockSize; j++) {
-                colors[x + i][y + j] = (byte) block[i][j];
-            }
-        }
-    }
+
 }
