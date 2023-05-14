@@ -75,7 +75,7 @@ public class Jpeg {
             System.out.println(ioException);
         }
     }
-    public void decodeToBMP(String inputFile,String outputFile) throws IOException {
+    public void decodeToImg(String inputFile,String outputFile) throws IOException {
         try (DataInputStream in = new DataInputStream(new FileInputStream(inputFile))) {
             byte compressionRatio = in.readByte();
 
@@ -198,85 +198,76 @@ public class Jpeg {
         }
         return result;
     }
-    private int[] performZigzag(int[][] block){
+    private int[] performZigzag(int[][] block) {
         int[] result = new int[64];
         int index = 0;
         int i = 0;
         int j = 0;
         boolean direction = false;
-        while (i != 8 && j != 8)
-        {
+        while (index < 64) {
             result[index] = block[i][j];
             index++;
-            if(direction){
-                if (j == 7){
+
+            if (direction) {
+                if (j == 7) {
                     i++;
                     direction = !direction;
-                }else if (i == 0){
+                } else if (i == 0) {
                     j++;
                     direction = !direction;
-                }else{
+                } else {
                     i--;
                     j++;
                 }
-            }else {
-                if (i == 7){
+            } else {
+                if (i == 7) {
                     j++;
                     direction = !direction;
                 } else if (j == 0) {
                     i++;
                     direction = !direction;
-                } else{
+                } else {
                     i++;
                     j--;
                 }
             }
         }
+
         return result;
     }
-    private int[][] zigzagFill(ArrayList<Short> block){
+
+    private int[][] zigzagFill(ArrayList<Short> block) {
         int[][] result = new int[8][8];
         int index = 0;
         int i = 0;
         int j = 0;
         boolean direction = false; // false = down-right, true = up-left
-        while (i != 8 && j != 8)
-        {
+
+        while (index < 64) {
             result[i][j] = block.get(index);
             index++;
-            if (direction)
-            {
-                //up-left
-                if (j == 7)
-                {
+
+            if (direction) {
+                // Up-left direction
+                if (j == 7) {
                     i++;
                     direction = !direction;
-                }
-                else if (i == 0)
-                {
+                } else if (i == 0) {
                     j++;
                     direction = !direction;
-                }
-                else
-                {
+                } else {
                     i--;
                     j++;
                 }
-            }
-            else
-            {
-                if (i == 7)
-                {
+            } else {
+                // Down-right direction
+                if (i == 7) {
                     j++;
                     direction = !direction;
-                }
-                else if (j == 0)
-                {
+                } else if (j == 0) {
                     i++;
                     direction = !direction;
-                }
-                else
-                {
+                } else {
                     i++;
                     j--;
                 }

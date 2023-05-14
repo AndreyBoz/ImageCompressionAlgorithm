@@ -11,6 +11,6 @@ public class Main {
         String inputFilePath = "input.bmp";
         Jpeg jpeg = new Jpeg(inputFilePath,0);
         jpeg.encodeToNewJpeg("output");
-        jpeg.decodeToBMP("output.newjpeg","output.jpg");
+        jpeg.decodeToImg("output.newjpeg","output.jpg");
     }
 }
