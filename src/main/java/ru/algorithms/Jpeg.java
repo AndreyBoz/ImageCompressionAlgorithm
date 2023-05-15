@@ -12,14 +12,14 @@ public class Jpeg {
     private int compressionRatio;
     private int blocks_encoded = 0;
     private static int[][][] quantizationTables = {{
-            { 53, 37, 31, 53, 86, 139, 175, 211 },
-            { 42, 40, 48, 66, 91, 199, 205, 188 },
-            { 49, 45, 56, 84, 139, 199, 243, 200 },
-            { 49, 60, 77, 103, 175, 299, 276, 212 },
-            { 63, 77, 130, 195, 237, 382, 362, 272 },
-            { 84, 123, 195, 226, 285, 367, 402, 327 },
-            { 172, 224, 272, 303, 362, 426, 422, 359 },
-            { 255, 327, 339, 350, 398, 354, 366, 353 }
+            {86, 60, 50, 86, 139, 224, 283, 341},
+            {67, 64, 77, 105, 144, 318, 328, 301},
+            {78, 72, 89, 134, 223, 318, 386, 317},
+            {78, 96, 123, 164, 283, 484, 446, 344},
+            {100, 123, 207, 312, 378, 607, 574, 430},
+            {133, 194, 305, 353, 445, 573, 625, 508},
+            {274, 358, 435, 485, 574, 675, 670, 569},
+            {406, 522, 542, 559, 638, 566, 585, 10000}
     },
             {{16, 11, 10, 16, 24, 40, 51, 61},
             {12, 12, 14, 19, 26, 58, 60, 55},
@@ -64,8 +64,7 @@ public class Jpeg {
                         int[][] block = getBlock(colors[i], j, l, 8);
                         block = DCT(block);
                         block = quantization(block, this.compressionRatio);
-                        int[] dataBlock = performZigzag(block);
-                        byte[] result = runLengthEncode(dataBlock);
+                        byte[] result = runLengthEncode(block);
                         out.write(result);
                         blocks_encoded++;
                     }
@@ -87,10 +86,17 @@ public class Jpeg {
             for (int i = 0; i < colors.length; i++) {
                 for (int j = 0; j < colors[i].length - 7; j += 8) {
                     for (int l = 0; l < colors[i][0].length - 7; l += 8) {
-                        byte[] encodedData = new byte[128];
-                        in.read(encodedData);
-
-                        int[] dataBlock = runLengthDecode(encodedData);
+                        int counterBlock = 0;
+                        int[] dataBlock = new int[64];
+                        while (counterBlock < 64){
+                            byte counter = in.readByte();
+                            int c = in.readByte();
+                            while ((int)(counter) > 0){
+                                dataBlock[counterBlock]=(int)c;
+                                counter--;
+                                counterBlock++;
+                            }
+                        }
                         int[][] block = performInverseZigzag(dataBlock);
                         block = dequantization(block, compressionRatio);
                         block = inverseDCT(block);
@@ -128,24 +134,24 @@ public class Jpeg {
             e.printStackTrace();
         }
     }
-    private int[][] getBlock(byte[][] colors, int x, int y, int blockSize) {
+    private int[][] getBlock(byte[][] colorChannel, int startX, int startY, int blockSize) {
         int[][] block = new int[blockSize][blockSize];
-
         for (int i = 0; i < blockSize; i++) {
             for (int j = 0; j < blockSize; j++) {
-                block[i][j] = colors[x + i][y + j] & 0xFF; // Преобразование значения в беззнаковый байт
+                block[i][j] = colorChannel[startX + i][startY + j] & 0xFF;
             }
         }
-
         return block;
     }
-    private void setBlock(int[][] block, byte[][] colors, int x, int y, int blockSize) {
+
+    private void setBlock(int[][] block, byte[][] colorChannel, int startX, int startY, int blockSize) {
         for (int i = 0; i < blockSize; i++) {
             for (int j = 0; j < blockSize; j++) {
-                colors[x + i][y + j] = (byte) block[i][j];
+                colorChannel[startX + i][startY + j] = (byte) Math.max(0, Math.min(block[i][j] & 0xFF, 255));
             }
         }
     }
+
     private void getYCbCr(BufferedImage input) {
         Y = new byte[width][height];
         Cb = new byte[width/2][height/2];
@@ -184,7 +190,7 @@ public class Jpeg {
                 {
                     for(int y = 0; y < 8; y++)
                     {
-                        s += input[x][y] * C(x, u) * C(y, v);
+                        s += input[x][y] *  C(y, v)*  C(x, u);
                     }
                 }
                 s *= 0.25;
@@ -211,79 +217,40 @@ public class Jpeg {
         int i = 0;
         int j = 0;
         boolean direction = false;
+
         while (index < 64) {
             result[index] = block[i][j];
             index++;
 
             if (direction) {
-                if (j == 7) {
-                    i++;
+                if (j == 0 || i == 7) {
                     direction = !direction;
-                } else if (i == 0) {
-                    j++;
-                    direction = !direction;
-                } else {
-                    i--;
-                    j++;
-                }
-            } else {
-                if (i == 7) {
-                    j++;
-                    direction = !direction;
-                } else if (j == 0) {
-                    i++;
-                    direction = !direction;
+                    if (i == 7)
+                        j++;
+                    else
+                        i++;
                 } else {
                     i++;
                     j--;
+                }
+            } else {
+                if (i == 0 || j == 7) {
+                    direction = !direction;
+                    if (j == 7)
+                        i++;
+                    else
+                        j++;
+                } else {
+                    i--;
+                    j++;
                 }
             }
         }
 
         return result;
     }
-
-    private int[][] zigzagFill(ArrayList<Short> block) {
-        int[][] result = new int[8][8];
-        int index = 0;
-        int i = 0;
-        int j = 0;
-        boolean direction = false; // false = down-right, true = up-left
-
-        while (index < 64) {
-            result[i][j] = block.get(index);
-            index++;
-
-            if (direction) {
-                // Up-left direction
-                if (j == 7) {
-                    i++;
-                    direction = !direction;
-                } else if (i == 0) {
-                    j++;
-                    direction = !direction;
-                } else {
-                    i--;
-                    j++;
-                }
-            } else {
-                // Down-right direction
-                if (i == 7) {
-                    j++;
-                    direction = !direction;
-                } else if (j == 0) {
-                    i++;
-                    direction = !direction;
-                } else {
-                    i++;
-                    j--;
-                }
-            }
-        }
-
-        return result;
-    }
-    private byte[] runLengthEncode(int[] data) {
+    private byte[] runLengthEncode(int[][] input) {
+        int[] data = performZigzag(input);
         ArrayList<Byte> encodedList = new ArrayList<>();
         int count = 1;
 
@@ -309,49 +276,34 @@ public class Jpeg {
 
         return encodedData;
     }
-    private int[] runLengthDecode(byte[] encodedData) {
-        ArrayList<Integer> decodedData = new ArrayList<>();
-
+    public int[][] performInverseZigzag(int[] dataBlock) {
+        int[][] block = new int[8][8];
+        int row = 0;
+        int col = 0;
         int index = 0;
-        while (index < encodedData.length) {
-            byte value = encodedData[index];
+        for (int i = 0; i < 64; i++) {
+            block[row][col] = dataBlock[index];
             index++;
 
-            if (index < encodedData.length) { // Проверка границ массива
-                byte counter = encodedData[index];
-                index++;
+            // Update the row and column based on the zigzag pattern
+            if ((row + col) % 2 == 0) {
+                // Even diagonal movement
+                if (col < 7)
+                    col++;
+                else
+                    row += 2;
 
-                for (int i = 0; i < counter; i++) {
-                    decodedData.add(0);
-                }
+                if (row > 0)
+                    row--;
             } else {
-                decodedData.add((int) value);
-            }
-        }
+                // Odd diagonal movement
+                if (row < 7)
+                    row++;
+                else
+                    col += 2;
 
-        int[] result = new int[decodedData.size()];
-        for (int i = 0; i < decodedData.size(); i++) {
-            result[i] = decodedData.get(i);
-        }
-
-        return result;
-    }
-
-    private int[][] performInverseZigzag(int[] dataBlock) {
-        int[][] block = new int[8][8];
-        int index = 0;
-
-        for (int sum = 0; sum <= 14; sum++) {
-            for (int i = Math.min(sum, 7); i >= Math.max(0, sum - 7); i--) {
-                int j = sum - i;
-                if (index < dataBlock.length) { // Проверка границ массива
-                    if (sum % 2 == 0) {
-                        block[i][j] = dataBlock[index];
-                    } else {
-                        block[j][i] = dataBlock[index];
-                    }
-                    index++;
-                }
+                if (col > 0)
+                    col--;
             }
         }
 
@@ -379,7 +331,7 @@ public class Jpeg {
                 double s = 0.0;
                 for (int u = 0; u < 8; u++) {
                     for (int v = 0; v < 8; v++) {
-                        s += input[u][v] * C(u, x) * C(v, y);
+                        s += input[u][v] * C(x, u) * C(y, v);
                     }
                 }
                 s *= 0.25;
